@@ -249,7 +249,6 @@ class VideoStream:
             try:
                 cap = cv2.VideoCapture(self.url)
                 try:
-                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                     cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 800)
                     cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 800)
                 except Exception:
@@ -551,6 +550,7 @@ class VariableMonitor:
         # 视频流
         self.video_stream = None
         self.stream_url = self.config.get("stream_url", "")
+        self.stream_after_id = None
 
         self._build_ui()
         self._apply_theme()
@@ -1062,8 +1062,6 @@ class VariableMonitor:
                     self.stream_status.config(text="图传: 连接中...", foreground="orange")
             else:
                 self.stream_status.config(text="")
-
-            self._render_stream_frame()
 
             if has_new_data or self.variables:
                 self._rebuild_tree()
@@ -1661,6 +1659,12 @@ class VariableMonitor:
     def _on_stream_stopped(self, stopped_stream=None):
         if self.video_stream is not None and stopped_stream is not self.video_stream:
             return
+        if self.stream_after_id:
+            try:
+                self.root.after_cancel(self.stream_after_id)
+            except Exception:
+                pass
+            self.stream_after_id = None
         self.stream_photo = None
         self.stream_canvas.delete("all")
         self.stream_canvas.create_text(
@@ -1718,6 +1722,14 @@ class VariableMonitor:
             self.stream_panel_status.config(text=msg, foreground="red")
             canvas.create_text(cw // 2, ch // 2, text=msg, fill="#ff7777", tags=("status",))
 
+    def _stream_render_loop(self):
+        self.stream_after_id = None
+        if not self.video_stream:
+            return
+        self._render_stream_frame()
+        if self.video_stream:
+            self.stream_after_id = self.root.after(1, self._stream_render_loop)
+
     def _start_stream(self, url):
         if self.video_stream and self.video_stream.running:
             self._stop_stream()
@@ -1728,6 +1740,12 @@ class VariableMonitor:
         self.video_stream = VideoStream(url, config=self.config)
         self.video_stream.start()
         self.stream_btn.config(text="⏹ 关图传")
+        if self.stream_after_id:
+            try:
+                self.root.after_cancel(self.stream_after_id)
+            except Exception:
+                pass
+        self.stream_after_id = self.root.after(1, self._stream_render_loop)
 
     # ─────────────────────────────────────────────────────────── 设置对话框
     def _open_settings(self):
@@ -2419,6 +2437,9 @@ class VariableMonitor:
         self.running = False
         if self.refresh_after_id:
             self.root.after_cancel(self.refresh_after_id)
+        if self.stream_after_id:
+            self.root.after_cancel(self.stream_after_id)
+            self.stream_after_id = None
         if self.sock:
             try:
                 self.sock.close()

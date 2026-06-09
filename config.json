@@ -64,7 +64,10 @@
     "cir_st": "圆环内部状态",
     "cir_line": "圆环当前使用边线",
     "cir_cand": "圆环进入候选方向",
-    "cir_cf": "圆环进入确认帧数"
+    "cir_cf": "圆环进入确认帧数",
+    "obs_side": "砖块位置",
+    "det_st": "绕行状态",
+    "det_cnt": "绕行剩余计数"
   },
   "value_map": {
     "mode": {
@@ -101,6 +104,16 @@
       "-1": "左圆环",
       "0": "无候选",
       "1": "右圆环"
+    },
+    "obs_side": {
+      "0": "无",
+      "1": "左",
+      "2": "右"
+    },
+    "det_st": {
+      "0": "无",
+      "1": "左绕",
+      "2": "右绕"
     }
   },
   "var_types": {
@@ -153,6 +166,9 @@
     "cir_st": "enum",
     "cir_line": "enum",
     "cir_cand": "enum",
-    "cir_cf": "int"
+    "cir_cf": "int",
+    "obs_side": "enum",
+    "det_st": "enum",
+    "det_cnt": "int"
   }
 }

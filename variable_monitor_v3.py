@@ -650,6 +650,23 @@ class VariableMonitor:
         self.hist_combo.pack(side=tk.LEFT, padx=(2, 0))
         self.hist_combo.bind("<<ComboboxSelected>>", lambda _: self._on_history_len_changed())
 
+        # ---- 图传地址栏 ----
+        stream_bar = ttk.Frame(self.root, padding=(8, 2))
+        stream_bar.pack(fill=tk.X)
+
+        ttk.Label(stream_bar, text="图传地址:").pack(side=tk.LEFT)
+        self.stream_url_var = tk.StringVar()
+        default_stream_url = self.config.get("stream_url", "").strip()
+        if not default_stream_url:
+            ip = self.ip_combo.get() if self.ip_combo.get() else "192.168.1.1"
+            default_stream_url = guess_stream_url(ip)
+        self.stream_url_var.set(default_stream_url)
+        self.stream_url_entry = ttk.Entry(stream_bar, textvariable=self.stream_url_var, width=52)
+        self.stream_url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 6))
+        self.stream_url_entry.bind("<Return>", lambda _event: self._refresh_stream())
+        self.stream_refresh_btn = ttk.Button(stream_bar, text="刷新图传", width=10, command=self._refresh_stream)
+        self.stream_refresh_btn.pack(side=tk.LEFT)
+
         # ---- 搜索栏 ----
         search_bar = ttk.Frame(self.root, padding=(8, 2))
         search_bar.pack(fill=tk.X)
@@ -1606,40 +1623,26 @@ class VariableMonitor:
             self._stop_stream()
             return
 
-        # 弹窗，从 config 读取默认地址
-        default_url = self.config.get("stream_url", "").strip()
-        if not default_url:
+        self._refresh_stream()
+
+    def _get_stream_url_from_entry(self):
+        url = self.stream_url_var.get().strip()
+        if not url:
             ip = self.ip_combo.get() if self.ip_combo.get() else "192.168.1.1"
-            default_url = guess_stream_url(ip)
+            url = guess_stream_url(ip)
+            self.stream_url_var.set(url)
+        return url
 
-        dlg = tk.Toplevel(self.root)
-        dlg.title("图传地址")
-        dlg.geometry("380x90")
-        dlg.resizable(False, False)
-        dlg.transient(self.root)
-        dlg.grab_set()
+    def _refresh_stream(self):
+        url = self._get_stream_url_from_entry()
+        if not url:
+            messagebox.showinfo("提示", "请输入图传地址")
+            return
 
-        ttk.Label(dlg, text="MJPEG 流地址:").pack(pady=(8, 2))
-        url_entry = ttk.Entry(dlg, width=46)
-        url_entry.insert(0, default_url)
-        url_entry.pack(pady=2)
-        url_entry.select_range(0, tk.END)
-        url_entry.focus_set()
-
-        def on_ok():
-            u = url_entry.get().strip()
-            if not u:
-                messagebox.showinfo("提示", "请输入地址")
-                return
-            # 写回 config
-            self.stream_url = u
-            self.config["stream_url"] = u
-            self._save_config_or_alert()
-            dlg.destroy()
-            self._start_stream(u)
-
-        ttk.Button(dlg, text="连接", command=on_ok).pack(pady=4)
-        url_entry.bind("<Return>", lambda _: on_ok())
+        self.stream_url = url
+        self.config["stream_url"] = url
+        self._save_config_or_alert()
+        self._start_stream(url)
 
     def _show_stream_panel(self):
         panes = set(self.bottom_pane.panes())

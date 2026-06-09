@@ -179,6 +179,7 @@ class VideoStream:
         self.thread = None
         self.cap = None
         self.frame = None
+        self.frame_id = 0
         self.lock = threading.Lock()
         self.fps = 0
         self.frame_count = 0
@@ -299,7 +300,8 @@ class VideoStream:
             if ret and frame is not None:
                 read_fail_count = 0
                 with self.lock:
-                    self.frame = frame.copy()
+                    self.frame = frame
+                    self.frame_id += 1
 
                 # 首帧：记录分辨率
                 if first_frame:
@@ -428,6 +430,13 @@ class VideoStream:
         with self.lock:
             return self.frame.copy() if self.frame is not None else None
 
+    def get_frame_snapshot(self):
+        """获取最新帧和帧序号。序号不变表示没有新帧。"""
+        with self.lock:
+            if self.frame is None:
+                return None, self.frame_id
+            return self.frame.copy(), self.frame_id
+
 
 # ══════════════════════════════════════════════════════════════ 变量记录
 class VarRecord:
@@ -551,6 +560,10 @@ class VariableMonitor:
         self.video_stream = None
         self.stream_url = self.config.get("stream_url", "")
         self.stream_after_id = None
+        self.stream_last_frame_id = -1
+        self.stream_render_fps = 0
+        self.stream_render_count = 0
+        self.stream_render_last_time = time.time()
 
         self._build_ui()
         self._apply_theme()
@@ -1684,7 +1697,7 @@ class VariableMonitor:
         canvas = self.stream_canvas
         cw = max(1, canvas.winfo_width())
         ch = max(1, canvas.winfo_height())
-        frame = self.video_stream.get_frame()
+        frame, frame_id = self.video_stream.get_frame_snapshot()
 
         if frame is None:
             canvas.delete("all")
@@ -1692,6 +1705,10 @@ class VariableMonitor:
             self.stream_panel_status.config(text=status, foreground="orange")
             canvas.create_text(cw // 2, ch // 2, text=status, fill="#cccccc", tags=("status",))
             return
+
+        if frame_id == self.stream_last_frame_id:
+            return
+        self.stream_last_frame_id = frame_id
 
         try:
             from PIL import Image, ImageTk
@@ -1708,13 +1725,22 @@ class VariableMonitor:
 
             canvas.delete("all")
             canvas.create_image(cw // 2, ch // 2, image=self.stream_photo, anchor=tk.CENTER)
+            self.stream_render_count += 1
+            now = time.time()
+            elapsed = now - self.stream_render_last_time
+            if elapsed >= 1.0:
+                self.stream_render_fps = self.stream_render_count / elapsed
+                self.stream_render_count = 0
+                self.stream_render_last_time = now
             fps = self.video_stream.fps
             res = self.video_stream.stream_resolution
             text_parts = []
             if res:
                 text_parts.append(res)
             if fps > 0:
-                text_parts.append(f"{fps:.0f}fps")
+                text_parts.append(f"收{fps:.0f}fps")
+            if self.stream_render_fps > 0:
+                text_parts.append(f"显{self.stream_render_fps:.0f}fps")
             self.stream_panel_status.config(text=" ".join(text_parts) or "已连接", foreground="green")
         except Exception as e:
             canvas.delete("all")
@@ -1728,7 +1754,7 @@ class VariableMonitor:
             return
         self._render_stream_frame()
         if self.video_stream:
-            self.stream_after_id = self.root.after(1, self._stream_render_loop)
+            self.stream_after_id = self.root.after_idle(self._stream_render_loop)
 
     def _start_stream(self, url):
         if self.video_stream and self.video_stream.running:
@@ -1737,6 +1763,10 @@ class VariableMonitor:
         self.stream_canvas.delete("all")
         self.stream_canvas.create_text(160, 90, text="连接中...", fill="#cccccc", tags=("status",))
         self.stream_panel_status.config(text="连接中...", foreground="orange")
+        self.stream_last_frame_id = -1
+        self.stream_render_fps = 0
+        self.stream_render_count = 0
+        self.stream_render_last_time = time.time()
         self.video_stream = VideoStream(url, config=self.config)
         self.video_stream.start()
         self.stream_btn.config(text="⏹ 关图传")
@@ -1745,7 +1775,7 @@ class VariableMonitor:
                 self.root.after_cancel(self.stream_after_id)
             except Exception:
                 pass
-        self.stream_after_id = self.root.after(1, self._stream_render_loop)
+        self.stream_after_id = self.root.after_idle(self._stream_render_loop)
 
     # ─────────────────────────────────────────────────────────── 设置对话框
     def _open_settings(self):

@@ -32,7 +32,7 @@ print("config.json ok")
         throw "PyInstaller failed for lan_scanner.spec"
     }
 
-    $releaseName = "smart-car-variable-monitor-v3-windows"
+    $releaseName = "genesis-udp-video-debug-assistant-windows"
     $releaseDir = Join-Path (Get-Location) "dist\$releaseName"
     $releaseZip = Join-Path (Get-Location) "dist\$releaseName.zip"
 
@@ -44,7 +44,7 @@ print("config.json ok")
     }
 
     New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
-    Copy-Item -LiteralPath "dist\smart-car-variable-monitor-v3.exe" -Destination $releaseDir
+    Copy-Item -LiteralPath "dist\genesis-udp-video-debug-assistant.exe" -Destination $releaseDir
     Copy-Item -LiteralPath "dist\lan-scanner.exe" -Destination $releaseDir
     Copy-Item -LiteralPath "config.json" -Destination $releaseDir
     Copy-Item -LiteralPath "README.md" -Destination $releaseDir

@@ -1,4 +1,4 @@
-# 智能车变量监视器 v3
+# Genesis 智能车队 UDP 图传调试助手
 
 一个用于智能车调试的 UDP 上位机工具，支持实时变量监视、波形显示、双向调参、CSV 记录、变量名称/值映射，以及内嵌 MJPEG 图传预览。
 
@@ -26,8 +26,8 @@
 
 普通用户建议从 GitHub Releases 下载打包好的 Windows 可执行程序：
 
-- `smart-car-variable-monitor-v3-windows.zip`: 推荐下载，包含主程序、扫描器、默认配置、README 和许可证
-- `smart-car-variable-monitor-v3.exe`: 智能车变量监视器主程序
+- `genesis-udp-video-debug-assistant-windows.zip`: 推荐下载，包含主程序、扫描器、默认配置、README 和许可证
+- `genesis-udp-video-debug-assistant.exe`: Genesis 智能车队 UDP 图传调试助手主程序
 - `lan-scanner.exe`: 局域网扫描辅助工具
 
 开发者可从源码运行：
@@ -81,7 +81,7 @@ python -m pip install -r requirements-dev.txt
 .\scripts\build.ps1
 ```
 
-构建完成后，推荐上传 `dist/smart-car-variable-monitor-v3-windows.zip` 到 GitHub Release。
+构建完成后，推荐上传 `dist/genesis-udp-video-debug-assistant-windows.zip` 到 GitHub Release。
 
 也可以单独打包：
 

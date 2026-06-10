@@ -11,3 +11,4 @@
 - 将 PyInstaller spec 文件改为英文文件名，降低 Windows 终端编码问题
 - 将 Release 可执行文件名改为英文，提升跨环境下载和发布稳定性
 - 构建脚本新增 Windows Release zip 打包输出
+- 将项目对外名称统一为 Genesis 智能车队 UDP 图传调试助手

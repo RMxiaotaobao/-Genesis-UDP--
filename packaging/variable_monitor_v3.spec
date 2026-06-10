@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='smart-car-variable-monitor-v3',
+    name='genesis-udp-video-debug-assistant',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

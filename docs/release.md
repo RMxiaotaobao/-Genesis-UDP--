@@ -15,8 +15,8 @@ python -m pip install -r requirements-dev.txt
 
 确认 `dist/` 目录生成以下文件：
 
-- `smart-car-variable-monitor-v3-windows.zip`
-- `smart-car-variable-monitor-v3.exe`
+- `genesis-udp-video-debug-assistant-windows.zip`
+- `genesis-udp-video-debug-assistant.exe`
 - `lan-scanner.exe`
 
 ## 创建版本标签
@@ -34,8 +34,8 @@ git push origin v3.0.0
 在 GitHub 仓库页面创建 Release：
 
 - Tag: `v3.0.0`
-- Title: `智能车变量监视器 v3.0.0`
-- Assets: 推荐上传 `dist/smart-car-variable-monitor-v3-windows.zip`
+- Title: `Genesis 智能车队 UDP 图传调试助手 v3.0.0`
+- Assets: 推荐上传 `dist/genesis-udp-video-debug-assistant-windows.zip`
 - Description: 建议写明团队、开发者、主要功能和本次变更
 
 可执行程序不要提交到 Git 仓库，保持 `dist/` 只作为本地构建输出。

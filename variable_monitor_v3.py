@@ -511,7 +511,7 @@ class VarRecord:
 class VariableMonitor:
     def __init__(self, root):
         self.root = root
-        self.root.title("智能车变量监视器 v3  by RMxiaotaobao")
+        self.root.title("Genesis 智能车队 UDP 图传调试助手  by RMxiaotaobao")
         self.root.geometry("960x680")
         self.root.minsize(700, 420)
 

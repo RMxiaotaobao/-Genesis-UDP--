@@ -4,6 +4,8 @@
 
 - 工作室/团队：华东交通大学起源 Genesis 智能车队
 - 开发者：RMxiaotaobao
+- 署名：Genesis智能车队-RMxiaotaobao
+- 标语：祝您：调试无阻，开发无忧！
 
 ## 发布前检查
 

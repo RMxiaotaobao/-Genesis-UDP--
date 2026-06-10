@@ -22,6 +22,10 @@ import re
 from collections import deque, OrderedDict
 from queue import Queue, Empty
 
+APP_TITLE = "Genesis 智能车队 UDP 图传调试助手"
+APP_CREDIT = "Genesis智能车队-RMxiaotaobao"
+APP_WISH = "祝您：调试无阻，开发无忧！"
+
 # ══════════════════════════════════════════════════════════════ 工具函数
 def get_local_ips():
     """获取本机所有网卡 IP 地址"""
@@ -511,7 +515,7 @@ class VarRecord:
 class VariableMonitor:
     def __init__(self, root):
         self.root = root
-        self.root.title("Genesis 智能车队 UDP 图传调试助手  by RMxiaotaobao")
+        self.root.title(f"{APP_TITLE}  {APP_CREDIT}")
         self.root.geometry("960x680")
         self.root.minsize(700, 420)
 
@@ -792,7 +796,7 @@ class VariableMonitor:
         self.rate_label = ttk.Label(status, text="")
         self.rate_label.pack(side=tk.RIGHT, padx=8)
 
-        ttk.Label(status, text="by RMxiaotaobao", foreground="gray").pack(side=tk.RIGHT, padx=8)
+        ttk.Label(status, text=f"{APP_CREDIT}  {APP_WISH}", foreground="gray").pack(side=tk.RIGHT, padx=8)
 
     # ─────────────────────────────────────────────────────────── 主题
     def _toggle_theme(self):
@@ -2495,6 +2499,40 @@ def main():
         print("[启动] OpenCV: 未安装！请运行 pip install opencv-python")
 
     root = tk.Tk()
+    root.withdraw()
+    splash = tk.Toplevel(root)
+    splash.title(APP_TITLE)
+    splash.geometry("460x180")
+    splash.resizable(False, False)
+    splash.configure(bg="#101820")
+    splash.update_idletasks()
+    x = (splash.winfo_screenwidth() - 460) // 2
+    y = (splash.winfo_screenheight() - 180) // 2
+    splash.geometry(f"460x180+{x}+{y}")
+
+    tk.Label(
+        splash,
+        text=APP_TITLE,
+        bg="#101820",
+        fg="#f5f7fa",
+        font=("Microsoft YaHei UI", 16, "bold"),
+    ).pack(pady=(28, 8))
+    tk.Label(
+        splash,
+        text=APP_CREDIT,
+        bg="#101820",
+        fg="#7dd3fc",
+        font=("Microsoft YaHei UI", 12),
+    ).pack(pady=4)
+    tk.Label(
+        splash,
+        text=APP_WISH,
+        bg="#101820",
+        fg="#d1d5db",
+        font=("Microsoft YaHei UI", 11),
+    ).pack(pady=(8, 0))
+
+    root.after(1400, lambda: (splash.destroy(), root.deiconify()))
     app = VariableMonitor(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()

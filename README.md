@@ -69,6 +69,7 @@ speed_L:12.3,speed_R:12.1,err:-3.4,state:0
 
 - `udp_port`: 上位机监听端口
 - `stream_url`: MJPEG 图传地址
+- `show_splash`: 是否显示启动开屏
 - `name_map`: 变量原始名到显示名的映射
 - `value_map`: 枚举/状态变量的值映射
 - `var_types`: 变量显示格式，例如 `int`、`float1`、`float2`、`float3`、`enum`

@@ -17,6 +17,7 @@
   "stream_url": "http://192.168.101.103:8080/stream",
   "stream_width": 160,
   "stream_height": 60,
+  "show_splash": true,
   "name_map": {
     "kp": "比例系数",
     "ki": "积分系数",

@@ -116,6 +116,7 @@ def load_config(path=None):
         "only_newest_count": 8,
         "stream_width": 640,
         "stream_height": 480,
+        "show_splash": True,
     }
     if os.path.exists(path):
         try:
@@ -2488,27 +2489,38 @@ class VariableMonitor:
         self.root.destroy()
 
 
-def main():
-    import sys
-    print(f"[启动] Python: {sys.executable}")
-    print(f"[启动] 版本: {sys.version}")
-    try:
-        import cv2
-        print(f"[启动] OpenCV: {cv2.__version__} @ {cv2.__file__}")
-    except ImportError:
-        print("[启动] OpenCV: 未安装！请运行 pip install opencv-python")
+def show_splash_screen(root):
+    cfg_path = get_config_path()
+    cfg = load_config(cfg_path)
+    if not cfg.get("show_splash", True):
+        root.deiconify()
+        return
 
-    root = tk.Tk()
     root.withdraw()
     splash = tk.Toplevel(root)
     splash.title(APP_TITLE)
-    splash.geometry("460x180")
+    splash.geometry("500x230")
     splash.resizable(False, False)
     splash.configure(bg="#101820")
     splash.update_idletasks()
-    x = (splash.winfo_screenwidth() - 460) // 2
-    y = (splash.winfo_screenheight() - 180) // 2
-    splash.geometry(f"460x180+{x}+{y}")
+    x = (splash.winfo_screenwidth() - 500) // 2
+    y = (splash.winfo_screenheight() - 230) // 2
+    splash.geometry(f"500x230+{x}+{y}")
+
+    skip_var = tk.BooleanVar(value=False)
+
+    def enter_app():
+        if skip_var.get():
+            cfg["show_splash"] = False
+            save_config(cfg, cfg_path)
+        splash.destroy()
+        root.deiconify()
+
+    def close_app():
+        splash.destroy()
+        root.destroy()
+
+    splash.protocol("WM_DELETE_WINDOW", close_app)
 
     tk.Label(
         splash,
@@ -2516,7 +2528,7 @@ def main():
         bg="#101820",
         fg="#f5f7fa",
         font=("Microsoft YaHei UI", 16, "bold"),
-    ).pack(pady=(28, 8))
+    ).pack(pady=(26, 8))
     tk.Label(
         splash,
         text=APP_CREDIT,
@@ -2530,10 +2542,39 @@ def main():
         bg="#101820",
         fg="#d1d5db",
         font=("Microsoft YaHei UI", 11),
-    ).pack(pady=(8, 0))
+    ).pack(pady=(8, 12))
 
-    root.after(1400, lambda: (splash.destroy(), root.deiconify()))
+    tk.Checkbutton(
+        splash,
+        text="不再显示",
+        variable=skip_var,
+        bg="#101820",
+        fg="#d1d5db",
+        activebackground="#101820",
+        activeforeground="#ffffff",
+        selectcolor="#101820",
+        font=("Microsoft YaHei UI", 10),
+    ).pack()
+
+    btn_frame = tk.Frame(splash, bg="#101820")
+    btn_frame.pack(pady=14)
+    ttk.Button(btn_frame, text="进入程序", command=enter_app, width=12).pack(side=tk.LEFT, padx=8)
+    ttk.Button(btn_frame, text="关闭", command=close_app, width=10).pack(side=tk.LEFT, padx=8)
+
+
+def main():
+    import sys
+    print(f"[启动] Python: {sys.executable}")
+    print(f"[启动] 版本: {sys.version}")
+    try:
+        import cv2
+        print(f"[启动] OpenCV: {cv2.__version__} @ {cv2.__file__}")
+    except ImportError:
+        print("[启动] OpenCV: 未安装！请运行 pip install opencv-python")
+
+    root = tk.Tk()
     app = VariableMonitor(root)
+    show_splash_screen(root)
     root.protocol("WM_DELETE_WINDOW", app.on_closing)
     root.mainloop()
 

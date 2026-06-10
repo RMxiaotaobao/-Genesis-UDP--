@@ -6,13 +6,13 @@ $ErrorActionPreference = "Stop"
 
 Push-Location (Join-Path $PSScriptRoot "..")
 try {
-    python -m py_compile variable_monitor_v3.py tools/lan_scanner.py
+    python -m py_compile src/variable_monitor_v3.py tools/lan_scanner.py
 
     @'
 import json
 from pathlib import Path
 
-with Path("config.json").open("r", encoding="utf-8") as f:
+with Path("src/config.json").open("r", encoding="utf-8") as f:
     json.load(f)
 print("config.json ok")
 '@ | python -
@@ -46,9 +46,9 @@ print("config.json ok")
     New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
     Copy-Item -LiteralPath "dist\genesis-udp-video-debug-assistant.exe" -Destination $releaseDir
     Copy-Item -LiteralPath "dist\lan-scanner.exe" -Destination $releaseDir
-    Copy-Item -LiteralPath "config.json" -Destination $releaseDir
-    Copy-Item -LiteralPath "README.md" -Destination $releaseDir
-    Copy-Item -LiteralPath "LICENSE" -Destination $releaseDir
+    Copy-Item -LiteralPath "src\config.json" -Destination $releaseDir
+    Copy-Item -LiteralPath "docs\README.md" -Destination $releaseDir
+    Copy-Item -LiteralPath "docs\LICENSE" -Destination $releaseDir
 
     Compress-Archive -Path (Join-Path $releaseDir "*") -DestinationPath $releaseZip -Force
 

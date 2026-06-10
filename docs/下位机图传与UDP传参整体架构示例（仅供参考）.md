@@ -1,8 +1,20 @@
 # 图传与 UDP 传参系统说明文档
 
-> 适用平台：龙芯 2K0300/2K0301  
-> 作者：RMxiaotaobao  
-> 最后更新：2026-06-10
+> **适用平台**：龙芯 2K0300 / 2K0301  
+> **作者**：RMxiaotaobao  
+> **最后更新**：2026-06-10
+
+本文档说明项目中的图像传输、UDP 传参、统一发送线程和断网保护模块，适合用于功能移植、上位机对接、联调排错和后续维护。
+
+## 快速索引
+
+| 目标 | 推荐阅读 |
+|------|----------|
+| 了解整体工作方式 | [1. 系统概述](#1-系统概述)、[2. 架构总览](#2-架构总览) |
+| 只移植 UDP 调参 | [5. UDP 传参实现详解](#5-udp-传参实现详解)、[8. 移植指南](#8-移植指南) |
+| 做浏览器图传 | [4.2 HTTP MJPEG 推流](#42-方案二http-mjpeg-推流) |
+| 对接 LoongHost / VOFA+ | [10. 上位机对接说明](#10-上位机对接说明) |
+| 排查网络或端口问题 | [11. 常见问题](#11-常见问题) |
 
 ---
 
@@ -51,82 +63,74 @@
 
 ## 2. 架构总览
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          生产者 (Producer)                          │
-│                                                                     │
-│  主循环 (120fps)              控制定时器 (5ms)                       │
-│  ┌──────────────┐             ┌──────────────┐                      │
-│  │ 摄像头采集    │             │ PID 控制      │                      │
-│  │ 图像处理      │             │ 电机驱动      │                      │
-│  └──────┬───────┘             └──────┬───────┘                      │
-│         │                            │                              │
-│         │ push_image()               │ push_telemetry()             │
-│         │ push_telemetry_debug()     │                              │
-│         ▼                            ▼                              │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │              UdpSendThread (1ms 轮询)                         │   │
-│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │   │
-│  │  │ 图像 30fps   │ │ 遥测 100Hz  │ │ Debug遥测 30fps     │    │   │
-│  │  └──────┬──────┘ └──────┬──────┘ └──────────┬──────────┘    │   │
-│  └─────────┼───────────────┼────────────────────┼───────────────┘   │
-│            │               │                    │                   │
-└────────────┼───────────────┼────────────────────┼───────────────────┘
-             ▼               ▼                    ▼
-    ┌──────────────┐  ┌──────────────┐    ┌──────────────┐
-    │ HTTP MJPEG   │  │ UDP 文本     │    │ UDP 文本     │
-    │ Server:8080  │  │ 发送         │    │ 发送         │
-    └──────┬───────┘  └──────┬───────┘    └──────┬───────┘
-           │                 │                    │
-           ▼                 ▼                    ▼
-    ┌──────────────┐  ┌──────────────┐    ┌──────────────┐
-    │ 浏览器       │  │ LoongHost    │    │ LoongHost    │
-    │ 查看画面     │  │ 波形显示     │    │ 变量监视     │
-    └──────────────┘  └──────────────┘    └──────────────┘
+```text
+┌──────────────────────┐
+│  生产者 / Producer   │
+├──────────────────────┤
+│ 摄像头采集、图像处理 │
+│ PID 控制、电机驱动   │
+└──────────┬───────────┘
+           │
+           │ push_image()
+           │ push_telemetry()
+           ▼
+┌──────────────────────────────────────────────┐
+│          UdpSendThread，1ms 轮询              │
+├──────────────┬──────────────┬────────────────┤
+│ 图像 30fps   │ 遥测 100Hz   │ Debug 遥测 30fps │
+└──────┬───────┴──────┬───────┴────────┬───────┘
+       │              │                │
+       ▼              ▼                ▼
+┌────────────┐  ┌────────────┐  ┌────────────┐
+│ HTTP MJPEG │  │ UDP 文本   │  │ UDP 文本   │
+│ :8080      │  │ 遥测发送   │  │ Debug 发送 │
+└─────┬──────┘  └─────┬──────┘  └─────┬──────┘
+      ▼               ▼               ▼
+┌────────────┐  ┌────────────┐  ┌────────────┐
+│ 浏览器     │  │ LoongHost  │  │ LoongHost  │
+│ 查看画面   │  │ 波形显示   │  │ 变量监视   │
+└────────────┘  └────────────┘  └────────────┘
 
-    ┌──────────────┐
-    │ PC 上位机    │  ──UDP指令──▶  UdpTuner::receive_command()
-    │ 远程调参     │                      │
-    └──────────────┘                      ▼
-                                   参数更新到控制回路
+PC 上位机 ── UDP 指令 ──▶ UdpTuner::receive_command()
+                         └─ 参数更新到控制回路
 ```
 
 ---
 
 ## 3. 模块清单与依赖关系
 
-### 核心库层 (`libraries/drv/`)
+### 3.1 核心库层
 
-| 文件 | 类/功能 | 依赖 |
+位置：`libraries/drv/`
+
+| 文件 | 类 / 功能 | 依赖 |
 |------|---------|------|
-| `inc/lq_udp_client.hpp` | `lq_udp_client` - UDP socket 封装 | POSIX socket, (可选) OpenCV |
+| `inc/lq_udp_client.hpp` | `lq_udp_client`，UDP socket 封装 | POSIX socket，可选 OpenCV |
 | `src/lq_udp_client.cpp` | UDP 客户端实现 | - |
-| `inc/lq_net_image_trans.hpp` | `lq_http_image_server` - HTTP MJPEG 服务器 | POSIX socket, OpenCV, pthread |
+| `inc/lq_net_image_trans.hpp` | `lq_http_image_server`，HTTP MJPEG 服务器 | POSIX socket、OpenCV、pthread |
 | `src/lq_net_image_trans.cpp` | HTTP 服务器实现 | - |
 
-### 应用层 (`user_app/`)
+### 3.2 应用层
 
-| 文件 | 类/功能 | 依赖 |
+位置：`user_app/`
+
+| 文件 | 类 / 功能 | 依赖 |
 |------|---------|------|
-| `inc/udp_tuner.hpp` | `UdpTuner` - 双向调参器 | `lq_udp_client` |
+| `inc/udp_tuner.hpp` | `UdpTuner`，双向调参器 | `lq_udp_client` |
 | `src/udp_tuner.cpp` | 调参器实现 | - |
-| `inc/udp_send_thread.hpp` | `UdpSendThread` - 统一发送线程 | `UdpTuner`, `lq_http_image_server` |
+| `inc/udp_send_thread.hpp` | `UdpSendThread`，统一发送线程 | `UdpTuner`、`lq_http_image_server` |
 | `src/udp_send_thread.cpp` | 发送线程实现 | - |
 | `inc/network_protect.hpp` | 断网保护接口 | system ping |
 | `src/network_protect.cpp` | 断网保护实现 | `Control.hpp` |
 
-### 依赖关系图
+### 3.3 依赖关系
 
-```
-lq_udp_client          (最底层，无业务依赖)
-    │
-    ├── UdpTuner       (封装双向调参协议)
-    │
-    └── lq_http_image_server   (独立的 HTTP 服务器)
-            │
-            └── UdpSendThread  (统一管理图传+遥测发送)
-                    │
-                    └── network_protect  (断网安全保护)
+```text
+lq_udp_client
+├── UdpTuner
+└── lq_http_image_server
+    └── UdpSendThread
+        └── network_protect
 ```
 
 ---
@@ -194,14 +198,15 @@ public:
 
 **实现细节**：
 
-- 监听 TCP 端口（默认 8080），非阻塞 accept + 1ms 轮询
-- 每个客户端连接在独立的 `detached thread` 中处理
-- `GET /` 返回一个带样式的 HTML 查看页面
-- `GET /stream` 返回 MJPEG 持续流
-- 帧去重：相同帧自动跳过，节省带宽
-- 45 秒空闲超时自动断开客户端
-- CORS 头：`Access-Control-Allow-Origin: *`，支持跨域
-- 无客户端连接时跳过 JPEG 编码，节省 CPU
+| 项目 | 说明 |
+|------|------|
+| 监听方式 | TCP 端口，默认 `8080`，非阻塞 `accept` + 1ms 轮询 |
+| 客户端处理 | 每个客户端连接在独立 `detached thread` 中处理 |
+| 页面入口 | `GET /` 返回带样式的 HTML 查看页面 |
+| 视频流入口 | `GET /stream` 返回 MJPEG 持续流 |
+| 性能优化 | 相同帧自动跳过；无客户端连接时跳过 JPEG 编码 |
+| 超时策略 | 45 秒空闲自动断开客户端 |
+| 跨域支持 | `Access-Control-Allow-Origin: *` |
 
 **HTTP 响应头**：
 
@@ -838,27 +843,33 @@ void demo_full_integration()
 
 ## 10. 上位机对接说明
 
-### LoongHost.exe（原创智能车上位机）
+### 10.1 LoongHost.exe（原创智能车上位机）
 
-- **图传**：监听 UDP 8080 端口，自动解析 `4字节长度 + JPEG` 协议
-- **波形**：接收 `name:value` 文本格式，按名称显示曲线
-- **调参**：发送 `name:value` 文本格式，设备端自动解析
+| 功能 | 对接方式 |
+|------|----------|
+| 图传 | 监听 UDP `8080` 端口，自动解析 `4字节长度 + JPEG` |
+| 波形 | 接收 `name:value` 文本格式，按名称显示曲线 |
+| 调参 | 发送 `name:value` 文本格式，设备端自动解析 |
 
-### VOFA+
+### 10.2 VOFA+
 
-- **协议**：选择 `JustFloat`
-- **传输**：选择 `UDP`，监听端口 `8080`
-- **数据**：每个 `float` 占 4 字节，小端序，帧尾 `0x00 0x00 0x80 0x7f`
-- **波形**：每个 float 对应一条曲线，自动命名 channel0, channel1, ...
+| 项目 | 配置 |
+|------|------|
+| 协议 | `JustFloat` |
+| 传输方式 | `UDP` |
+| 监听端口 | `8080` |
+| 数据格式 | 每个 `float` 占 4 字节，小端序 |
+| 帧尾 | `0x00 0x00 0x80 0x7f` |
+| 曲线命名 | 每个 float 对应一条曲线，自动命名 `channel0`、`channel1` 等 |
 
-### 浏览器（HTTP 图传）
+### 10.3 浏览器（HTTP 图传）
 
 - 直接访问 `http://<板卡IP>:8080`
 - 支持 Chrome、Firefox、Edge 等现代浏览器
 - 支持多客户端同时查看
 - 无需安装任何软件
 
-### 网络调试助手（通用 UDP 测试）
+### 10.4 网络调试助手（通用 UDP 测试）
 
 - **发送**：向 `<板卡IP>:8080` 发送文本 `param1:100.0,param2:200.0`
 - **接收**：监听本地 UDP 8080 端口，接收设备回传的键值对数据
@@ -867,28 +878,28 @@ void demo_full_integration()
 
 ## 11. 常见问题
 
-### Q: 图传画面卡顿或延迟高？
+### Q1：图传画面卡顿或延迟高？
 
 - 降低 JPEG 质量（`quality` 参数从 50 降到 30）
 - 降低分辨率（如从 320x240 改为 160x120）
 - 使用 UDP 直传方案替代 HTTP（延迟更低）
 - 检查网络带宽是否足够
 
-### Q: UDP 数据收不到？
+### Q2：UDP 数据收不到？
 
 1. 确认板卡和 PC 在同一网段
 2. 确认 PC 防火墙允许 UDP 8080 端口
 3. 确认 `TARGET_IP` 是 PC 的 IP（不是板卡的）
 4. 使用 `ping` 测试网络连通性
 
-### Q: 如何同时使用 VOFA+ 和 LoongHost？
+### Q3：如何同时使用 VOFA+ 和 LoongHost？
 
 - VOFA+ 使用 `send_justfloat()` 发送二进制数据
 - LoongHost 使用 `send_data()` 发送文本数据
 - 两者可以同时使用，发送到不同端口，或交替发送到同一端口
 - 建议使用 `UdpSendThread` 管理不同通道
 
-### Q: HTTP 图传服务器端口被占用？
+### Q4：HTTP 图传服务器端口被占用？
 
 ```cpp
 // 更换端口号
@@ -896,7 +907,7 @@ lq_http_image_server server(9090);  // 使用 9090 端口
 // 浏览器访问 http://<IP>:9090
 ```
 
-### Q: 如何自定义遥测数据？
+### Q5：如何自定义遥测数据？
 
 在你的控制逻辑中构造 `ParamValue` 列表即可：
 
@@ -911,7 +922,7 @@ sender.push_telemetry(my_params);  // 或 tuner.send_data(my_params)
 
 参数名可以是任意字符串，上位机会按名称显示。
 
-### Q: 断网保护误触发怎么办？
+### Q6：断网保护误触发怎么办？
 
 - 增大失败阈值：`NP_netSetFailCount(5)` （默认3次）
 - 增大 ping 间隔：`NP_netSetInterval(1000)` （默认500ms）

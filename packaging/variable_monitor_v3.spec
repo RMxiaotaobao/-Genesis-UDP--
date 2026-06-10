@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['../variable_monitor_v3.py'],
+    ['../src/variable_monitor_v3.py'],
     pathex=[],
     binaries=[],
-    datas=[('../config.json', '.')],
+    datas=[('../src/config.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

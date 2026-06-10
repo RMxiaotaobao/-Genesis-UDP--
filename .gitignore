@@ -7,6 +7,9 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Build artifacts
 build/
@@ -16,11 +19,13 @@ dist/
 # Runtime output
 screenshots/
 *.csv
+*.log
 network_scan_results.txt
 
 # Local editor/assistant state
 .claude/
 .vscode/
+.idea/
 
 # OS files
 .DS_Store

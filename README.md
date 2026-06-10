@@ -29,6 +29,11 @@ python -m pip install -r requirements.txt
 python .\variable_monitor_v3.py
 ```
 
+辅助工具：
+
+- `tools/lan_scanner.py`: 局域网设备扫描脚本
+- `loongson2k301/user/udp_tuner.hpp`、`loongson2k301/user/udp_tuner.cpp`: 下位机 UDP 调参参考实现
+
 ## 下位机数据格式
 
 上位机默认接收 UTF-8 文本 UDP 报文：
@@ -54,10 +59,30 @@ speed_L:12.3,speed_R:12.1,err:-3.4,state:0
 
 ## 打包
 
-项目包含 PyInstaller 配置：
+项目包含 PyInstaller 配置，打包前建议安装开发依赖：
 
 ```powershell
-pyinstaller ".\智能车变量监视器v3.spec"
+python -m pip install -r requirements-dev.txt
+pyinstaller ".\packaging\智能车变量监视器v3.spec"
+```
+
+局域网扫描器也可单独打包：
+
+```powershell
+pyinstaller ".\packaging\局域网扫描器.spec"
+```
+
+## 仓库结构
+
+```text
+.
+├── variable_monitor_v3.py          # 主程序
+├── config.json                     # 默认配置
+├── tools/                          # 辅助脚本
+├── packaging/                      # PyInstaller 打包配置
+├── loongson2k301/user/             # 下位机参考代码
+├── requirements.txt                # 运行依赖
+└── requirements-dev.txt            # 开发/打包依赖
 ```
 
 ## 许可证

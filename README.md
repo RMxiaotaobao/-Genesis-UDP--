@@ -2,6 +2,11 @@
 
 一个用于智能车调试的 UDP 上位机工具，支持实时变量监视、波形显示、双向调参、CSV 记录、变量名称/值映射，以及内嵌 MJPEG 图传预览。
 
+## 项目信息
+
+- 工作室/团队：华东交通大学起源 Genesis 智能车队
+- 开发者：RMxiaotaobao
+
 ## 功能
 
 - 通过 UDP 接收下位机发送的 `name:value,name:value` 格式遥测数据
@@ -16,6 +21,16 @@
 
 - Python 3.8+
 - Windows/Linux/macOS 均可运行 Tkinter 主程序，图传功能需要 OpenCV 和 Pillow
+
+## 获取程序
+
+普通用户建议从 GitHub Releases 下载打包好的 Windows 可执行程序：
+
+- `smart-car-variable-monitor-v3-windows.zip`: 推荐下载，包含主程序、扫描器、默认配置、README 和许可证
+- `smart-car-variable-monitor-v3.exe`: 智能车变量监视器主程序
+- `lan-scanner.exe`: 局域网扫描辅助工具
+
+开发者可从源码运行：
 
 安装依赖：
 
@@ -63,13 +78,16 @@ speed_L:12.3,speed_R:12.1,err:-3.4,state:0
 
 ```powershell
 python -m pip install -r requirements-dev.txt
-pyinstaller ".\packaging\智能车变量监视器v3.spec"
+.\scripts\build.ps1
 ```
 
-局域网扫描器也可单独打包：
+构建完成后，推荐上传 `dist/smart-car-variable-monitor-v3-windows.zip` 到 GitHub Release。
+
+也可以单独打包：
 
 ```powershell
-pyinstaller ".\packaging\局域网扫描器.spec"
+pyinstaller ".\packaging\lan_scanner.spec"
+pyinstaller ".\packaging\variable_monitor_v3.spec"
 ```
 
 ## 仓库结构
@@ -79,6 +97,7 @@ pyinstaller ".\packaging\局域网扫描器.spec"
 ├── variable_monitor_v3.py          # 主程序
 ├── config.json                     # 默认配置
 ├── tools/                          # 辅助脚本
+├── scripts/                        # 构建脚本
 ├── packaging/                      # PyInstaller 打包配置
 ├── loongson2k301/user/             # 下位机参考代码
 ├── requirements.txt                # 运行依赖
